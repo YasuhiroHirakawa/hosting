@@ -1,0 +1,301 @@
+<html>
+<head>
+<title>画像一覧</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/default.css" type="text/css" />
+<link rel="stylesheet" href="css/table.css" type="text/css" />
+<link rel="stylesheet" href="css/lightbox.css" type="text/css" />
+<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+<!-- Kii SDKの読み込み -->
+<script type="text/javascript" src="js/KiiSDK.min.js"></script>
+<!-- Kii SDK初期化スクリプトの読み込み -->
+<script type="text/javascript" src="js/init.js"></script>
+<!-- セッション管理スクリプトの読み込み -->
+<script type="text/javascript" src="js/session.js"></script>
+<!-- データ一覧用スクリプト -->
+<script type="text/javascript">
+// アクセストークンによるログインが成功した場合に実行されます。
+function authenticateWithTokenSsuccess(){
+    // データの読み込み
+    loadThumbnailData();
+}
+
+// データ保存用変数
+var thumbnailList = [];
+
+// データの読み込み
+function loadThumbnailData(){
+
+    // ログイン中のユーザーオブジェクトを取得します。
+    var currentUser = KiiUser.getCurrentUser();
+    
+    // ユーザースコープの"thumbnail"という名前のBucketを指定します。
+    var bucket = currentUser.bucketWithName("thumbnail");
+    
+    // 検索実行後の処理の記述
+    var queryCallbacks = {
+        // 検索が成功した場合に実行されます。
+        success: function(queryPerformed, resultSet, nextQuery) {
+            // 検索結果をデータ保存用変数にコピーします。
+            for(var i=0; i<resultSet.length; i++) {
+                thumbnailList.push(resultSet[i]);
+            }
+            // 残りの検索結果があるか確認します。
+            if(nextQuery != null) {
+                // 残りの検索結果がある場合は、取得します。
+                bucket.executeQuery(nextQuery, queryCallbacks);
+            } else {
+                // 残りの検索結果がない場合は、データを画面に出力します。
+                for(var i=0; i<thumbnailList.length; i++){
+                    var rowData = thumbnailList[i]; // i番目のオブジェクトの取得
+                    // 表に追加
+                    insertRow(rowData);
+                }
+            }
+        },
+        // 検索が失敗した場合に実行されます。
+        failure: function(queryPerformed, anErrorString) {
+            // do something with the error response
+        }
+    }
+    
+    // 検索条件の作成
+    var query = new KiiQuery();
+    query.sortByAsc("_created"); //作成日昇順
+    
+    // 検索の実行
+    bucket.executeQuery(query, queryCallbacks);
+}
+
+$(function(){
+    
+    // 追加ボタン押下時の処理
+    $('#link_add').click(function(event){
+        console.log("click add");
+        location.href="upload_image.html";
+    });
+    
+    // ログアウトボタン押下時の処理
+    $('#link_logout').click(function(event){
+        console.log("click logout");
+        
+        // ログアウト
+        logout();
+        
+    });
+});
+
+// オブジェクトの更新
+function updateData(title, comment, thumbnailURI, imageURI){
+    // タイトルとコメントの編集のページで利用する情報をlocalStorageに保存
+    localStorage.selectedObject_title = title;
+    localStorage.selectedObject_comment = comment;
+    localStorage.selectedObject_thumbnailURI = thumbnailURI;
+    localStorage.selectedObject_imageURI = imageURI;
+    
+    // タイトルとコメントの編集画面に遷移
+    location.href = "edit_title_and_comment.html";
+}
+
+// オブジェクトの削除
+function deleteData(thumbnailURI, imageURI){
+
+    if(window.confirm("削除しますか？")){
+
+        // 画像オブジェクトの削除
+        // オブジェクトURIで削除するオブジェクトを指定します。
+        var object = KiiObject.objectWithURI(imageURI);
+
+        // オブジェクトの削除
+        object.delete({
+            // オブジェクトの削除が成功した時に実行されます。
+            success: function(theDeletedObject) {
+                console.log("Object deleted!");
+                console.log(theDeletedObject);
+                
+                // サムネイルオブジェクトの削除
+                // オブジェクトURIで削除するオブジェクトを指定します。
+                var object = KiiObject.objectWithURI(thumbnailURI);
+
+                // オブジェクトの削除
+                object.delete({
+                // オブジェクトの削除が成功した時に実行されます。
+                    success: function(theDeletedObject) {
+                        console.log("Object deleted!");
+                        console.log(theDeletedObject);
+                        window.alert("データを削除しました");
+                
+                        // 画面の再読み込み
+                        location.reload();
+                    },
+                    // オブジェクトの削除が失敗した時に実行されます。
+                    failure: function(theObject, errorString) {
+                        console.log("Error deleting object: " + errorString);
+                    }
+                });
+            },
+            // オブジェクトの削除が失敗した時に実行されます。
+            failure: function(theObject, errorString) {
+                console.log("Error deleting object: " + errorString);
+            }
+        });
+    }
+}
+
+// 表への行の挿入
+function insertRow(rowData){
+
+    var thumbnailURI = rowData.objectURI(); // サムネイルオブジェクトのURI
+    console.log(thumbnailURI);
+    var imageURI = rowData.get("imageURI"); // 画像オブジェクトのURI
+    
+    var created = rowData.getCreated();     // オブジェクトの作成日時
+    var modified = rowData.getModified();   // オブジェクトの変更日時
+    var title = rowData.get("title");       // タイトル
+    var comment = rowData.get("comment");   // コメント
+    if(comment == "") comment = "&nbsp;";
+
+    // 表の参照取得
+    var table = document.getElementById("image_list_table");
+    // 行の追加
+    var row = table.insertRow(-1);
+
+    // セルの追加
+    var cell1 = row.insertCell(-1);
+    var cell2 = row.insertCell(-1);
+    var cell3 = row.insertCell(-1);
+    var cell4 = row.insertCell(-1);
+    var cell5 = row.insertCell(-1);
+    var cell6 = row.insertCell(-1);
+    var cell7 = row.insertCell(-1);
+    // セルへの値の設定
+    cell1.innerHTML = title;
+    cell2.innerHTML = comment;
+    cell4.innerHTML = formatDate(new Date( created ));
+    cell5.innerHTML = formatDate(new Date( modified ));
+    cell6.innerHTML = "<a id='link_update' class='button' href='javascript:updateData(\"" + title + "\",\"" + comment + "\",\"" + thumbnailURI + "\",\"" + imageURI + "\")'>更新</a>";
+    cell7.innerHTML = "<a id='link_delete' class='button' href='javascript:deleteData(\"" + thumbnailURI + "\",\"" + imageURI + "\")'>削除</a>";
+    
+    // サムネイル画像（オブジェクトボディ）のダウンロード
+    // サムネイル画像のオブジェクトURIを指定してKiiObjectを生成
+    var thumbnailObject = KiiObject.objectWithURI(thumbnailURI);
+    // オブジェクトボディのダウンロード
+    thumbnailObject.downloadBody({
+        progress: function (oEvent) {
+            if (oEvent.lengthComputable) {
+                var percentComplete = oEvent.loaded / oEvent.total;
+                //getting download progress. You can update progress bar on this function.
+            } 
+        },
+        // ダウンロードが成功した場合に実行されます。
+        success: function(obj, bodyBlob) {
+            var thumbnail_dataURL = URL.createObjectURL(bodyBlob);
+            var img = document.createElement('img');
+            var src = document.createAttribute('src');
+            img.setAttributeNode(src);
+            src.value = thumbnail_dataURL;
+            cell3.appendChild(img);
+        },
+        // ダウンロードが失敗した場合に実行されます。
+        failure: function(obj, anErrorString) {
+            // Handle error.
+        }
+    });
+    
+    // 行がクリックされた際に実画像を表示
+    $(row).addClass('clickable').click( function() {
+        
+        // 実画像（オブジェクトボディ）のダウンロード
+        // 実画像のオブジェクトURIを指定してKiiObjectを生成
+        var imageObject = KiiObject.objectWithURI(imageURI);
+        // オブジェクトボディのダウンロード
+        imageObject.downloadBody({
+            progress: function (oEvent) {
+                if (oEvent.lengthComputable) {
+                    var percentComplete = oEvent.loaded / oEvent.total;
+                    //getting download progress. You can update progress bar on this function.
+                } 
+            },
+            // ダウンロードが成功した場合に実行されます。
+            success: function(obj, bodyBlob) {
+                var imageview = document.getElementById('imageview');
+                imageview.href = URL.createObjectURL(bodyBlob);;
+                var imageTitle = document.createAttribute('title');
+                imageTitle.value = title;
+                imageview.setAttributeNode(imageTitle);
+            
+                $('#imageview')[0].click();
+            
+            },
+            // ダウンロードが失敗した場合に実行されます。
+            failure: function(obj, anErrorString) {
+                // Handle error.
+            }
+        });
+    }).find('a').hover( function() {
+        $(this).parents('tr').unbind('click');
+    }, function() {
+        $(this).parents('tr').click( function() {
+        });
+    });
+}
+
+// 日付のフォーマット
+function formatDate(date){
+    var year = date.getFullYear();
+    var month = date.getMonth() + 1;
+    var day = date.getDate();
+    
+    var hours = date.getHours();
+    var minuites = date.getMinutes();
+    var seconds = date.getSeconds();
+    
+    if ( month < 10 ) {  
+        month = '0' + month;  
+    }
+    if ( day < 10 ) {  
+        day = '0' + day;  
+    }
+    if ( hours < 10 ) {  
+        hours = '0' + hours;  
+    }
+    if ( minuites < 10 ) {  
+        minuites = '0' + minuites;  
+    }
+    if ( seconds < 10 ) {  
+        seconds = '0' + seconds;  
+    }
+    var dateStr = year + '/' + month + '/' + day + ' ' + hours + ':' + minuites + ':' + seconds;  
+    return dateStr;  
+}
+</script>
+</head>
+<body>
+<div style="width: 100%;">
+<div style="display: table;margin-left: auto; margin-right: auto;">
+<div style="display: table; margin-right: auto; margin-top: 10px; margin-bottom: 10px;">
+<a id="link_logout" href='javascript:void(0)'>ログアウト</a>
+</div>
+<div style="display: table; margin-left: auto; margin-top: 10px; margin-bottom: 10px;">
+<a id="link_add" class="button" href='javascript:void(0)'>追加</a>
+</div>
+<table id="image_list_table">
+    <tbody>
+        <tr>
+            <th>タイトル</th>
+            <th>コメント</th>
+            <th>画像</th>
+            <th>作成日時</th>
+            <th>更新日時</th>
+            <th></th>
+            <th></th>
+        </tr>
+    </tbody>
+</table>
+</div>
+</div>
+<!-- 画像表示用 -->
+<a id="imageview" href="" data-lightbox="image-1"></a>
+<script src="js/lightbox.min.js"></script>
+</body>
+</html>

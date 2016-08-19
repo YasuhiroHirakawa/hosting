@@ -1,0 +1,97 @@
+<html>
+<head>
+<title>ログイン</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/default.css" type="text/css" />
+<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+<!-- Kii SDKの読み込み -->
+<script type="text/javascript" src="js/KiiSDK.min.js"></script>
+<!-- Kii SDK初期化スクリプトの読み込み -->
+<script type="text/javascript" src="js/init.js"></script>
+<!-- ログイン画面用スクリプト -->
+<script type="text/javascript">
+// トップ画面なので画面読み込み時にアクセストークンを無効にします。
+localStorage.accessToken = "";
+
+// Kii cloudへのログイン
+// フォームに入力されたメールアドレスとパスワードでログインします。
+// ログインが成功したら、アクセストークンをlocalStorageに保存し、データ一覧画面に遷移します。
+function login(username, password){
+    // ログイン
+    KiiUser.authenticate(username, password, {
+        // ログインが成功した場合に実行されます。
+        success: function(theUser) {
+            
+            console.log("User authenticated!");
+            console.log(theUser);
+            
+            // アクセストークンの取得
+            var accessToken = KiiUser.getCurrentUser().getAccessToken();
+            console.log(accessToken);
+            
+            // ログイン後のページで再ログインに利用するためにlocalStorageに保存
+            localStorage.accessToken = accessToken;
+
+            // 画像一覧画面に遷移
+            location.href = "image_list.html";
+        },
+        // ログインが失敗した場合に実行されます。
+        failure: function(theUser, errorString) {
+            
+            console.log("Error authenticating: " + errorString);
+            
+            // 失敗のメッセージの表示
+            var node = document.getElementById("message");
+            node.innerHTML = "ログインできませんでした";
+        }
+    });
+}
+
+// ログインボタン押下時の処理
+$(function(){
+    $('form').submit(function(event){
+        console.log("form submit");
+        event.preventDefault();
+        var f = $(this);
+        var email = f.prop('email').value;
+        var password = f.prop('password').value;
+        console.log("email = " + email);
+        console.log("password = " + password);
+        
+        localStorage.login_email = email;
+        
+        // Kii cloudへのログイン
+        login(email, password);
+    });
+});
+</script>
+</head>
+<body>
+<div class="form-wrapper">
+    <h1>ログイン</h1>
+    <div id="message"></div>
+    <form class="form" id="form1">
+    <div class="form-item">
+        <label for="email"></label>
+        <input id="email" type="email" name="email" required="required" placeholder="メールアドレス"></input>
+        <script type="text/javascript">
+        if(!(localStorage.login_email === void 0)){
+            document.getElementById("email").value = localStorage.login_email;
+        }
+        </script>
+    </div>
+    <div class="form-item">
+        <label for="password"></label>
+        <input type="password" name="password" required="required" placeholder="パスワード"></input>
+    </div>
+    <div class="button-panel">
+        <input type="submit" class="button" title="ログイン" value="ログイン"></input>
+    </div>
+    </form>
+    <div class="form-footer">
+        <p><a href="register_user.html">ユーザー登録</a></p>
+        <p><a href="reset_password.html">パスワードのリセット</a></p>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<html>
+<head>
+<title>ユーザー登録</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/default.css" type="text/css" />
+<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+<!-- Kii SDKの読み込み -->
+<script type="text/javascript" src="js/KiiSDK.min.js"></script>
+<!-- Kii SDK初期化スクリプトの読み込み -->
+<script type="text/javascript" src="js/init.js"></script>
+<!-- ユーザー登録画面用スクリプト -->
+<script type="text/javascript">
+// トップ画面なので画面読み込み時にアクセストークンを無効にします。
+localStorage.accessToken = "";
+
+// ユーザー登録
+// フォームに入力された情報でユーザーを登録します。
+// 登録が成功したら、メッセージを表示して、ログイン画面に遷移します。
+function register(email, username, password){
+    // KiiUserのオブジェクトを作成します。
+    var user = KiiUser.userWithEmailAddressAndUsername(email, username, password);
+
+    // ユーザー登録を行います。
+    user.register({
+        // ユーザー登録が成功した場合に実行されます。
+        success: function(theUser) {
+        
+            console.log("User registered!");
+            console.log(theUser);
+            // メッセージを表示します。
+            // OKボタン押下で、ログイン画面に戻ります。
+            if(window.confirm("登録しました！！")){
+                location.href = "login.html";
+            }
+        },
+        // ユーザー登録が失敗した場合に実行されます。
+        failure: function(theUser, errorString) {
+        
+            console.log("Error registering: " + errorString);
+            
+            // 失敗のメッセージの表示
+            var node = document.getElementById("message");
+            node.innerHTML = "登録できませんでした";
+        }
+    });
+}
+
+// 登録ボタン押下時の処理
+$(function(){
+    $('form').submit(function(event){
+        console.log("form submit");
+        event.preventDefault();
+        var f = $(this);
+        var username = f.prop('username').value;
+        var email = f.prop('email').value;
+        var password = f.prop('password').value;
+        console.log("username = " + username);
+        console.log("email = " + email);
+        console.log("password = " + password);
+
+        // ユーザー登録
+        register(email, username, password);
+
+    });
+});
+</script>
+</head>
+<body>
+<div class="form-wrapper">
+    <h1>ユーザー登録</h1>
+    <div id="message"></div>
+    <form class="form" id="form1">
+    <div class="form-item">
+        <label for="username"></label>
+        <input type="text" name="username" required="required" placeholder="ユーザーID"></input>
+    </div>
+    <div class="form-item">
+        <label for="email"></label>
+        <input type="email" name="email" required="required" placeholder="メールアドレス"></input>
+    </div>
+    <div class="form-item">
+        <label for="password"></label>
+        <input type="password" name="password" required="required" placeholder="パスワード"></input>
+    </div>
+    <div class="button-panel">
+        <input type="submit" class="button" title="登録" value="登録"></input>
+    </div>
+    </form>
+    <div class="form-footer">
+        <p><a href="login.html">ログイン</a></p>
+    </div>
+</div>
+</body>
+</html>

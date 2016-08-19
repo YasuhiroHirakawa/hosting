@@ -1,0 +1,140 @@
+<html>
+<head>
+<title>タイトルとコメントの編集</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/default.css" type="text/css" />
+<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+<script type="text/javascript" src="js/easeljs-0.8.1.min.js"></script>
+<script type="text/javascript" src="js/adaptImage.js"></script>
+<!-- Kii SDKの読み込み -->
+<script type="text/javascript" src="js/KiiSDK.min.js"></script>
+<!-- Kii SDK初期化スクリプトの読み込み -->
+<script type="text/javascript" src="js/init.js"></script>
+<!-- セッション管理スクリプトの読み込み -->
+<script type="text/javascript" src="js/session.js"></script>
+<!-- 画像アップロード画面用スクリプト -->
+<script type="text/javascript">
+// アクセストークンによるログインが成功した場合に実行されます。
+function authenticateWithTokenSsuccess(){
+    // 画面の初期設定
+    setup();
+}
+
+var thumbnailURI;
+
+// 画面の初期設定
+function setup(){
+    // タイトルのセット
+    document.getElementById("title").value = localStorage.selectedObject_title;
+    // コメントのセット
+    document.getElementById("comment").value = localStorage.selectedObject_comment;
+    // サムネイルオブジェクトのURIの保存
+    thumbnailURI = localStorage.selectedObject_thumbnailURI
+    // 画像のダウンロードと表示
+    downloadImage(localStorage.selectedObject_imageURI);
+}
+
+// 実画像（オブジェクトボディ）のダウンロードと表示
+function downloadImage(imageURI) {
+    // 実画像（オブジェクトボディ）のダウンロード
+    // 実画像のオブジェクトURIを指定してKiiObjectを生成
+    var imageObject = KiiObject.objectWithURI(imageURI);
+    // オブジェクトボディのダウンロード
+    imageObject.downloadBody({
+        progress: function (oEvent) {
+            if (oEvent.lengthComputable) {
+                var percentComplete = oEvent.loaded / oEvent.total;
+                //getting download progress. You can update progress bar on this function.
+            } 
+        },
+        // ダウンロードが成功した場合に実行されます。
+        success: function(obj, bodyBlob) {
+            // Obtaind body contents as bodyBlob.
+            // content-type managed in Kii Cloud can be obtained from type attr.
+            // It is same as obj.getBodyContentType();
+            var image_dataURL = URL.createObjectURL(bodyBlob);
+            // 画像のプレビュー表示
+            var image = document.getElementById('image');
+            var src = document.createAttribute('src');
+            image.setAttributeNode(src);
+            src.value = image_dataURL;
+        },
+        // ダウンロードが失敗した場合に実行されます。
+        failure: function(obj, anErrorString) {
+            // Handle error.
+        }
+    });
+}
+
+// タイトルとコメントの更新
+function updateTitleAndComment(title, comment){
+    // オブジェクトURIで更新するオブジェクトを指定します。
+    var thumbnailObject = KiiObject.objectWithURI(thumbnailURI);
+    
+    // 更新する値をセットします。
+    thumbnailObject.set("title", title);
+    thumbnailObject.set("comment", comment);
+
+    // オブジェクトの更新
+    thumbnailObject.save({
+        // オブジェクトの更新が成功した時に実行されます。
+        success: function(theObject) {
+
+            window.alert("更新しました");
+
+            // 一覧画面に戻る
+            back();
+        },
+        // オブジェクトの更新が失敗した時に実行されます。
+        failure: function(theObject, errorString) {
+            console.log("Error saving object: " + errorString);
+        }
+    });
+}
+
+// 
+function back(){
+    location.href="image_list.html";
+}
+
+// 登録ボタン押下時の処理
+$(function(){
+    $('form').submit(function(event){
+        console.log("form submit");
+        event.preventDefault();
+        var f = $(this);
+        var title = f.prop('title').value;
+        var comment = f.prop('comment').value;
+        console.log("title = " + title);
+        console.log("comment = " + comment);
+        
+        updateTitleAndComment(title, comment);
+    });
+});
+</script>
+</head>
+<body>
+<div class="form-wrapper-imageupload">
+    <h1>編集</h1>
+    <div id="display-image">
+        <img id="image" alt="" src="images/empty.png">
+    </div>
+    <form class="form" id="form1">
+    <div class="form-item">
+        <label for="username"></label>
+        <input type="text" id="title" name="title" required="required" placeholder="タイトル"></input>
+    </div>
+    <div class="form-item">
+        <label for="comment"></label>
+        <textarea id="comment" name="comment" placeholder="コメント"></textarea>
+    </div>
+    <div class="button-panel">
+        <input type="submit" class="upload" title="更新" value="更新"></input>
+    </div>
+    </form>
+    <div class="form-footer">
+        <p><a href="javascript:back();">戻る</a></p>
+    </div>
+</div>
+</body>
+</html>
